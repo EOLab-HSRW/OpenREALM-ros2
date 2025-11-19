@@ -10,9 +10,12 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED) 
 
 add_executable(demo_node src/demo_node.cpp)
-ament_target_dependencies(demo_node rclcpp std_msgs std_srvs)
+ament_target_dependencies(demo_node rclcpp std_msgs std_srvs nav_msgs sensor_msgs visualization_msgs)
 
 install(DIRECTORY
   launch

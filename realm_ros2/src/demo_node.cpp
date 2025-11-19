@@ -29,21 +29,23 @@
 // #include <OpenREALM/realm_stages/mosaicing.h>
 // #include <OpenREALM/realm_stages/tileing.h>
 
-// #include <std_msgs/String.h>
-// #include <sensor_msgs/Image.h>
-// #include <sensor_msgs/Imu.h>
-// #include <sensor_msgs/PointCloud.h>
-// #include <sensor_msgs/PointCloud2.h>
-// #include <sensor_msgs/PointCloud2.h>
-// #include <nav_msgs/Path.h>
-// #include <visualization_msgs/Marker.h>
-// #include <geometry_msgs/PoseStamped.h>
+
+    
+#include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/point_cloud.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+
+  
 // #include <realm_ros/conversions.h>
 // #include <realm_msgs/Frame.h>
 // #include <realm_msgs/CvGridMap.h>
 // #include <realm_msgs/GroundImageCompressed.h>
 
-// #include <std_srvs/Trigger.h>
+#include "std_srvs/srv/trigger.hpp"
 // #include <realm_msgs/ParameterChange.h> 
 
 
@@ -150,7 +152,7 @@ class MinimalPublisher : public rclcpp::Node
 
   private:
 
-    void readParams() /
+    void readParams()
     {
         this->declare_parameter("type", std::string("uninitalized"));
         type_ = this->get_parameter("type").as_string();
@@ -547,7 +549,7 @@ class MinimalPublisher : public rclcpp::Node
         return;
       }
 
-      auto publisher = _publisher[topic];
+      auto publisher = publisher_[topic];
 
       if (!publisher || publisher->get_subscription_count() == 0)
         return;
