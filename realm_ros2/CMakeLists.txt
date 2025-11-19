@@ -9,9 +9,10 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 add_executable(demo_node src/demo_node.cpp)
-ament_target_dependencies(demo_node rclcpp std_msgs)
+ament_target_dependencies(demo_node rclcpp std_msgs std_srvs)
 
 install(DIRECTORY
   launch

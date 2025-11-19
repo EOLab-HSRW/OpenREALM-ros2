@@ -6,7 +6,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
-
+#include <std_srvs/srv/empty.hpp>
 
 #include <mutex>
 #include <unordered_map>
@@ -59,7 +59,94 @@ class MinimalPublisher : public rclcpp::Node
     : Node("demo_node"), count_(0)
     {
 
-        readParams();
+      // Read basic launch file inputs
+      readParams();
+      
+      // Specify stage
+      setPaths();
+      //readStageSettings();
+
+      
+      // Set naming conventions
+      _topic_prefix = "/realm/" + _id_camera + "/" + _type_stage + "/";
+      _tf_base_frame_name = "realm_base";
+      _tf_stage_frame_name = "realm_" + _id_camera + "_" + _type_stage;
+
+      // Set ros subscriber according to launch input
+      _sub_input_frame = this->create_subscription<std_msgs::msg::String>(
+      _topic_frame_in, 5, 
+      std::bind(&MinimalPublisher::subFrame, this, std::placeholders::_1));
+
+      if (_is_master_stage)
+      {
+          publisher_.insert({"general/output_dir", 
+              this->create_publisher<std_msgs::msg::String>(
+                  "/realm/" + _id_camera + "/general/output_dir", 5)});
+          publisher_.insert({"general/gnss_base", 
+              this->create_publisher<sensor_msgs::msg::NavSatFix>(
+                  "/realm/" + _id_camera + "/general/gnss_base", 5)});
+      }
+      else
+      {
+          _sub_output_dir = this->create_subscription<std_msgs::msg::String>(
+              "/realm/" + _id_camera + "/general/output_dir", 5, 
+              std::bind(&MinimalPublisher::subOutputPath, this, std::placeholders::_1));
+      }
+
+      // Set ros services for stage handling
+      _srv_req_finish = this->create_service<std_srvs::srv::Empty>(
+      _topic_prefix + "request_finish",
+      std::bind(&MinimalPublisher::srvFinish, this, std::placeholders::_1, std::placeholders::_2));
+
+      _srv_req_stop = this->create_service<std_srvs::srv::Empty>(
+      _topic_prefix + "request_stop",
+      std::bind(&MinimalPublisher::srvStop, this, std::placeholders::_1, std::placeholders::_2));
+
+      _srv_req_resume = this->create_service<std_srvs::srv::Empty>(
+      _topic_prefix + "request_resume",
+      std::bind(&MinimalPublisher::srvResume, this, std::placeholders::_1, std::placeholders::_2));
+
+      _srv_req_reset = this->create_service<std_srvs::srv::Empty>(
+      _topic_prefix + "request_reset",
+      std::bind(&MinimalPublisher::srvReset, this, std::placeholders::_1, std::placeholders::_2));
+
+      _srv_change_param = this->create_service<std_srvs::srv::Empty>(
+      _topic_prefix + "change_param",
+      std::bind(&MinimalPublisher::srvChangeParam, this, std::placeholders::_1, std::placeholders::_2));
+
+      // Provide camera information a priori to all stages
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: : Loading camera from path:\n\t%s", _type_stage.c_str(),_file_settings_camera.c_str());
+      _settings_camera = CameraSettingsFactory::load(_file_settings_camera);
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: : Detected camera model: '%s'", _type_stage.c_str(), std::to_string((_settings_camera)["type"]).c_str());
+
+      // Create stages
+      if (_type_stage == "pose_estimation")
+        createStagePoseEstimation();
+        //RCLCPP_INFO(this->get_logger(), "Calling pose estimation stage creation");
+      if (_type_stage == "densification")
+        //createStageDensification();
+        RCLCPP_INFO(this->get_logger(), "Calling densification stage creation");
+      if (_type_stage == "surface_generation")
+        //createStageSurfaceGeneration();
+        RCLCPP_INFO(this->get_logger(), "Calling surface generation stage creation");
+      if (_type_stage == "ortho_rectification")
+        //createStageOrthoRectification();
+        RCLCPP_INFO(this->get_logger(), "Calling ortho rectification stage creation");
+      if (_type_stage == "mosaicing")
+        //createStageMosaicing();
+        RCLCPP_INFO(this->get_logger(), "Calling mosaicing stage creation");
+      if (_type_stage == "tileing")
+        //createStageTileing();
+        RCLCPP_INFO(this->get_logger(), "Calling tileing stage creation");
+
+      // set stage path if master stage
+      if (_is_master_stage)
+        _stage->initStagePath(_path_output + "/" + _dir_date_time);
+
+      // Start the thread for processing
+      _stage->start();
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Started stage node successfully!", _type_stage.c_str());
+
         
       publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
       timer_ = this->create_wall_timer(
@@ -68,7 +155,7 @@ class MinimalPublisher : public rclcpp::Node
 
   private:
 
-    void readParams() 
+    void readParams() /
     {
         this->declare_parameter("type", std::string("uninitalized"));
         type_ = this->get_parameter("type").as_string();
@@ -126,7 +213,7 @@ class MinimalPublisher : public rclcpp::Node
           //_path_working_directory = ros::package::getPath("realm_ros2");
           _path_working_directory = "/home/azam/realm_ros2/src/OpenREALM-ros2/realm_ros2";
           
-          _path_profile = _path_working_directory + "/profiles/" + _profile;
+        _path_profile = _path_working_directory + "/profiles/" + _profile;
 
         if (_path_output == "uninitialised")
           _path_output = _path_working_directory + "/output";
@@ -137,10 +224,10 @@ class MinimalPublisher : public rclcpp::Node
         _file_settings_stage = _path_profile + "/" + _type_stage + "/stage_settings.yaml";
         _file_settings_method = _path_profile + "/" + _type_stage + "/method/" + _method + "_settings.yaml";
 
-        if (!io::dirExists(_path_profile))
-          throw(std::runtime_error("Error: Profile folder '" + _path_profile + "' was not found!"));
-        if (!io::dirExists(_path_output))
-          io::createDir(_path_output);
+        // if (!io::dirExists(_path_profile))
+        //   throw(std::runtime_error("Error: Profile folder '" + _path_profile + "' was not found!"));
+        // if (!io::dirExists(_path_output))
+        //   io::createDir(_path_output);
 
         // Master priviliges
         //if (_is_master_stage)
@@ -150,6 +237,66 @@ class MinimalPublisher : public rclcpp::Node
           //if (!io::dirExists(_path_output + "/" + _dir_date_time))
           //  io::createDir(_path_output + "/" + _dir_date_time);
         //}
+    }
+
+    void readStageSettings()
+    {
+      // Load stage settings
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Loading stage settings from path:\n\t%s", _type_stage.c_str(), _file_settings_stage.c_str());
+      //_settings_stage = StageSettingsFactory::load(_type_stage, _file_settings_stage);
+      //RCLCPP_INFO("STAGE_NODE [%s]: Detected stage type: '%s'", _type_stage.c_str(), std::to_string((*_settings_stage)["type"]).c_str());
+    }
+
+    void createStagePoseEstimation()
+    {
+      // Pose estimation uses external frameworks, therefore load settings for that
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: : Loading vslam settings from path:\n\t%s", _type_stage.c_str(), _file_settings_method.c_str());
+      VisualSlamSettings::Ptr settings_vslam = VisualSlamSettingsFactory::load(_file_settings_method, _path_profile + "/" + _type_stage + "/method");
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: : Detected vslam type: '%s'", _type_stage.c_str(), (settings_vslam)["type"].toString().c_str());
+
+      ImuSettings::Ptr settings_imu = nullptr;
+      if ((*_settings_stage)["use_imu"].toInt() > 0)
+      {
+        settings_imu = std::make_shared<ImuSettings>();
+        settings_imu->loadFromFile(_file_settings_imu);
+      }
+
+      // Topic and stage creation
+      __stage = std::make_shared<stages::PoseEstimation>(_settings_stage, settings_vslam, _settings_camera, settings_imu, (*_settings_camera)["fps"].toDouble());
+      publisher_.insert({"output/frame", this->create_publisher<realm_msgs::msg::Frame>(_topic_frame_out, 5)});
+      publisher_.insert({"output/pose/visual/utm", this->create_publisher<geometry_msgs::msg::PoseStamped>(_topic_prefix + "pose/visual/utm", 5)});
+      publisher_.insert({"output/pose/visual/wgs", this->create_publisher<geometry_msgs::msg::PoseStamped>(_topic_prefix + "pose/visual/wgs", 5)});
+      publisher_.insert({"output/pose/visual/traj", this->create_publisher<nav_msgs::msg::Path>(_topic_prefix + "pose/visual/traj", 5)});
+      publisher_.insert({"output/pose/gnss/utm", this->create_publisher<geometry_msgs::msg::PoseStamped>(_topic_prefix + "pose/gnss/utm", 5)});
+      publisher_.insert({"output/pose/gnss/wgs", this->create_publisher<geometry_msgs::msg::PoseStamped>(_topic_prefix + "pose/gnss/wgs", 5)});
+      publisher_.insert({"output/pose/gnss/traj", this->create_publisher<nav_msgs::msg::Path>(_topic_prefix + "pose/gnss/traj", 5)});
+      publisher_.insert({"output/pointcloud", this->create_publisher<sensor_msgs::msg::PointCloud2>(_topic_prefix + "pointcloud", 5)});
+      publisher_.insert({"debug/tracked", this->create_publisher<sensor_msgs::msg::Image>(_topic_prefix + "tracked", 5)});
+      linkStageTransport();
+
+      if (_topic_imu_in != "uninitialised")
+      {
+          _sub_input_imu = this->create_subscription<sensor_msgs::msg::Imu>(_topic_imu_in, 100, std::bind(&MinimalPublisher::subImu, this, std::placeholders::_1));
+      }
+    }
+
+    void linkStageTransport()
+    {
+      namespace ph = std::placeholders;
+      auto transport_frame = std::bind(&MinimalPublisher::pubFrame, this, ph::_1, ph::_2);
+      auto transport_pose = std::bind(&MinimalPublisher::pubPose, this, ph::_1, ph::_2, ph::_3, ph::_4);
+      auto transport_pointcloud = std::bind(&MinimalPublisher::pubPointCloud, this, ph::_1, ph::_2);
+      auto transport_img = std::bind(&MinimalPublisher::pubImage, this, ph::_1, ph::_2);
+      auto transport_depth = std::bind(&MinimalPublisher::pubDepthMap, this, ph::_1, ph::_2);
+      auto transport_mesh = std::bind(&MinimalPublisher::pubMesh, this, ph::_1, ph::_2);
+      auto transport_cvgridmap = std::bind(&MinimalPublisher::pubCvGridMap, this, ph::_1, ph::_2, ph::_3, ph::_4);
+      _stage->registerFrameTransport(transport_frame);
+      _stage->registerPoseTransport(transport_pose);
+      _stage->registerPointCloudTransport(transport_pointcloud);
+      _stage->registerImageTransport(transport_img);
+      _stage->registerDepthMapTransport(transport_img);
+      _stage->registerMeshTransport(transport_mesh);
+      _stage->registerCvGridMapTransport(transport_cvgridmap);
     }
 
 
@@ -168,8 +315,29 @@ class MinimalPublisher : public rclcpp::Node
       RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
       publisher_->publish(message);
     }
+    
     rclcpp::TimerBase::SharedPtr timer_;
+    
+    //Publishers
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
+    
+    // Subscriptions
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr _sub_input_frame;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr _sub_output_dir;
+    
+    // Services
+    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr _srv_req_finish;
+    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr _srv_req_stop;
+    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr _srv_req_resume;
+    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr _srv_req_reset;
+    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr _srv_change_param;
+
+    
+    std::shared_ptr<StageSettings> _settings_stage;
+    std::shared_ptr<CameraSettings> _settings_camera;
+    std::shared_ptr<StageBase> _stage;
+    
+
     size_t count_;
 
     // ros parameter
@@ -187,6 +355,16 @@ class MinimalPublisher : public rclcpp::Node
     std::string _method;
     std::string _path_working_directory;
     std::string _path_output;
+
+    std::string _topic_prefix;
+    std::string _tf_base_frame_name;
+    std::string _tf_stage_frame_name;
+    std::string _path_profile;
+    std::string _file_settings_camera;
+    std::string _file_settings_imu;
+    std::string _file_settings_stage;
+    std::string _file_settings_method;
+    std::string _dir_date_time;
 };
 
 int main(int argc, char * argv[])
