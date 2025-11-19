@@ -122,22 +122,17 @@ class MinimalPublisher : public rclcpp::Node
       // Create stages
       if (_type_stage == "pose_estimation")
         createStagePoseEstimation();
-        //RCLCPP_INFO(this->get_logger(), "Calling pose estimation stage creation");
       if (_type_stage == "densification")
-        //createStageDensification();
-        RCLCPP_INFO(this->get_logger(), "Calling densification stage creation");
+        createStageDensification();
       if (_type_stage == "surface_generation")
-        //createStageSurfaceGeneration();
-        RCLCPP_INFO(this->get_logger(), "Calling surface generation stage creation");
+        createStageSurfaceGeneration();
       if (_type_stage == "ortho_rectification")
-        //createStageOrthoRectification();
-        RCLCPP_INFO(this->get_logger(), "Calling ortho rectification stage creation");
+        createStageOrthoRectification();
       if (_type_stage == "mosaicing")
-        //createStageMosaicing();
-        RCLCPP_INFO(this->get_logger(), "Calling mosaicing stage creation");
+        createStageMosaicing();
       if (_type_stage == "tileing")
-        //createStageTileing();
-        RCLCPP_INFO(this->get_logger(), "Calling tileing stage creation");
+        createStageTileing();
+        
 
       // set stage path if master stage
       if (_is_master_stage)
@@ -280,6 +275,65 @@ class MinimalPublisher : public rclcpp::Node
       }
     }
 
+    void createStageDensification()
+    {
+      // Densification uses external frameworks, therefore load settings for that
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: : Loading densifier settings from path:\n\t%s", _type_stage.c_str(), _file_settings_method.c_str());
+      DensifierSettings::Ptr settings_densifier = DensifierSettingsFactory::load(_file_settings_method, _path_profile + "/" + _type_stage + "/method");
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: : Detected densifier type: '%s'", _type_stage.c_str(), (*settings_densifier)["type"].toString().c_str());
+
+      // Topic and stage creation
+      _stage = std::make_shared<stages::Densification>(_settings_stage, settings_densifier, (*_settings_camera)["fps"].toDouble());
+      publisher_.insert({"output/frame", this->create_publisher<realm_msgs::msg::Frame>(_topic_frame_out, 5)});
+      publisher_.insert({"output/pose/utm", this->create_publisher<geometry_msgs::msg::PoseStamped>(_topic_prefix + "pose/utm", 5)});
+      publisher_.insert({"output/pose/wgs", this->create_publisher<geometry_msgs::msg::PoseStamped>(_topic_prefix + "pose/wgs", 5)});
+      publisher_.insert({"output/pointcloud", this->create_publisher<sensor_msgs::msg::PointCloud2>(_topic_prefix + "pointcloud", 5)});
+      publisher_.insert({"output/img_rectified", this->create_publisher<sensor_msgs::msg::Image>(_topic_prefix + "img", 5)});
+      publisher_.insert({"output/depth", this->create_publisher<sensor_msgs::msg::Image>(_topic_prefix + "depth", 5)});
+      publisher_.insert({"output/depth_display", this->create_publisher<sensor_msgs::msg::Image>(_topic_prefix + "depth_display", 5)});
+      linkStageTransport();
+    }
+
+    void createStageSurfaceGeneration()
+    {
+      _stage = std::make_shared<stages::SurfaceGeneration>(_settings_stage, (*_settings_camera)["fps"].toDouble());
+      publisher_.insert({"output/frame", this->create_publisher<realm_msgs::msg::Frame>(_topic_frame_out, 5)});
+      publisher_.insert({"output/elevation_map", this->create_publisher<sensor_msgs::msg::Image>(_topic_prefix + "elevation_map", 5)});
+      linkStageTransport();
+    }
+
+    void createStageOrthoRectification()
+    {
+      _stage = std::make_shared<stages::OrthoRectification>(_settings_stage, (*_settings_camera)["fps"].toDouble());
+      publisher_.insert({"output/frame", this->create_publisher<realm_msgs::msg::Frame>(_topic_frame_out, 5)});
+      publisher_.insert({"output/rectified", this->create_publisher<sensor_msgs::msg::Image>(_topic_prefix + "rectified", 5)});
+      publisher_.insert({"output/pointcloud", this->create_publisher<sensor_msgs::msg::PointCloud2>(_topic_prefix + "pointcloud", 5)});
+      linkStageTransport();
+    }
+
+    void createStageMosaicing()
+    {
+      _stage = std::make_shared<stages::Mosaicing>(_settings_stage, (*_settings_camera)["fps"].toDouble());
+      publisher_.insert({"output/rgb", this->create_publisher<sensor_msgs::msg::Image>(_topic_prefix + "rgb", 5)});
+      publisher_.insert({"output/elevation", this->create_publisher<sensor_msgs::msg::Image>(_topic_prefix + "elevation", 5)});
+      publisher_.insert({"output/pointcloud", this->create_publisher<sensor_msgs::msg::PointCloud2>(_topic_prefix + "pointcloud", 5)});
+      publisher_.insert({"output/mesh", this->create_publisher<visualization_msgs::msg::Marker>(_topic_prefix + "mesh", 5)});
+      publisher_.insert({"output/update/ortho", this->create_publisher<realm_msgs::msg::GroundImageCompressed>(_topic_prefix + "update/ortho", 5)});
+      //_publisher.insert({"output/update/elevation", _nh.advertise<realm_msgs::GroundImageCompressed>(_topic_prefix + "update/elevation", 5)});
+      linkStageTransport();
+    }
+
+    void createStageTileing()
+    {
+      _stage = std::make_shared<stages::Tileing>(_settings_stage, (*_settings_camera)["fps"].toDouble());
+      //_publisher.insert({"output/rgb", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "rgb", 5)});
+      //_publisher.insert({"output/elevation", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "elevation", 5)});
+      //_publisher.insert({"output/pointcloud", _nh.advertise<sensor_msgs::PointCloud2>(_topic_prefix + "pointcloud", 5)});
+      //_publisher.insert({"output/mesh", _nh.advertise<visualization_msgs::Marker>(_topic_prefix + "mesh", 5)});
+      //_publisher.insert({"output/update/ortho", _nh.advertise<realm_msgs::GroundImageCompressed>(_topic_prefix + "update/ortho", 5)});
+      linkStageTransport();
+    }
+
     void linkStageTransport()
     {
       namespace ph = std::placeholders;
@@ -299,7 +353,275 @@ class MinimalPublisher : public rclcpp::Node
       _stage->registerCvGridMapTransport(transport_cvgridmap);
     }
 
+    void subFrame(const realm_msgs::msg::Frame::SharedPtr msg)
+    {
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Received frame.", _type_stage.c_str());
+      if (msg->do_reset.data)
+      {
+        _stage->requestReset();
+        publisher_["output/geoimg"]->publish(*msg);
+        RCLCPP_WARN(this->get_logger(), "STAGE_NODE [%s]: Mission has triggered reset. Stage resetting...", _type_stage.c_str());
+        return;
+      }
+      Frame::Ptr frame = to_realm::frame(*msg);
+      if (_is_master_stage)
+      {
+        if (!_is_tf_base_initialized)
+          setTfBaseFrame(frame->getGnssUtm());
+      }
+      _stage->addFrame(std::move(frame));
+      
+    }
 
+    void subImu(const sensor_msgs::msg::Imu::SharedPtr msg)
+    {
+      VisualSlamIF::ImuData imu;
+      imu.timestamp = msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9;
+      imu.acceleration.x = msg->linear_acceleration.x;
+      imu.acceleration.y = msg->linear_acceleration.y;
+      imu.acceleration.z = msg->linear_acceleration.z;
+      imu.gyroscope.x = msg->angular_velocity.x;
+      imu.gyroscope.y = msg->angular_velocity.y;
+      imu.gyroscope.z = msg->angular_velocity.z;
+      reinterpret_cast<stages::PoseEstimation*>(_stage.get())->queueImuData(imu);
+    }
+    
+    void subOutputPath(const std_msgs::msg::String::SharedPtr msg)
+    {
+      // check if output directory has changed
+      if (_dir_date_time != msg->data)
+      {
+        // Note: master privilege is not to create folder, but to set the name of the folder
+        _dir_date_time = msg->data;
+        if (!io::dirExists(_path_output + "/" + _dir_date_time))
+          io::createDir(_path_output + "/" + _dir_date_time);
+        _stage->initStagePath(_path_output + "/" + _dir_date_time);
+        // Debug info
+        RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Received output directory, set to:\n\t%s",
+                    _type_stage.c_str(),
+                    (_path_output + "/" + _dir_date_time).c_str());
+      }
+    }
+
+    void pubPose(const cv::Mat &pose, uint8_t zone, char band, const std::string &topic)
+    {
+      std_msgs::msg::Header header;
+      header.stamp = this->now();
+      // utm
+      geometry_msgs::msg::PoseStamped utm_msg;
+      utm_msg.header = header;
+      utm_msg.header.frame_id = "utm";
+      utm_msg.pose = to_ros::pose(pose);
+      // wgs
+      geometry_msgs::msg::PoseStamped wgs_msg;
+      wgs_msg.header = header;
+      wgs_msg.header.frame_id = "wgs";
+      wgs_msg.pose = to_ros::poseWgs84(pose, zone, band);
+      publisher_[topic + "/utm"]->publish(utm_msg);
+      publisher_[topic + "/wgs"]->publish(wgs_msg);
+      // trajectory
+      std::vector<geometry_msgs::msg::PoseStamped>* trajectory = &_trajectories[topic];
+      trajectory->push_back(utm_msg);
+      pubTrajectory(*trajectory, topic + "/traj");
+      // transform
+      _tf_stage = to_ros::tf(pose);
+      if (!_is_tf_stage_initialized)
+        _is_tf_stage_initialized = true;
+    }
+
+    void pubPointCloud(const PointCloud::Ptr &sparse_cloud, const std::string &topic)
+    {
+      auto publisher = publisher_[topic];
+      if (publisher->get_subscription_count() == 0)
+        return;
+      std_msgs::msg::Header header;
+      header.frame_id = "utm";
+      header.stamp = this->now();
+      sensor_msgs::msg::PointCloud2 msg = to_ros::pointCloud(header, sparse_cloud->data());
+      publisher->publish(msg);
+    }
+        
+    void pubDepthMap(const cv::Mat &img, const std::string &topic)
+    {
+      auto publisher = publisher_[topic];
+      if (publisher->get_subscription_count() == 0)
+        return;
+      std_msgs::msg::Header header;
+      header.frame_id = "utm";
+      header.stamp = this->now();
+      sensor_msgs::msg::Image msg;
+
+      msg = *to_ros::image(header, img).toImageMsg();
+      publisher->publish(msg);
+    }
+    
+    void pubImage(const cv::Mat &img, const std::string &topic)
+    {
+      auto publisher = publisher_[topic];
+      if (publisher->get_subscription_count() == 0)
+        return;
+
+      std_msgs::msg::Header header;
+      header.frame_id = "utm";
+      header.stamp = this->now();
+    
+      auto msg = to_ros::imageDisplay(header, img).toImageMsg();
+      publisher->publish(*msg);
+    }
+
+    void pubMesh(const std::vector<Face> &faces, const std::string &topic)
+    {
+      std::unique_lock<std::mutex> lock(_mutex_do_shutdown);
+
+      auto publisher = publisher_[topic];
+
+      if (!publisher) {
+        RCLCPP_WARN(this->get_logger(), "Publisher for topic '%s' not found", topic.c_str());
+        return;
+      }
+
+      if (publisher->get_subscription_count() == 0)
+        return;
+
+      std_msgs::msg::Header header;
+      header.frame_id = _tf_base_frame_name;
+      header.stamp = this->now(); 
+
+
+      visualization_msgs::msg::Marker msg = to_ros::meshMarker(
+          header, 
+          faces, 
+          "Global Map", 
+          0,
+          visualization_msgs::msg::Marker::TRIANGLE_LIST,
+          visualization_msgs::msg::Marker::ADD, 
+          _tf_base.inverse()
+      );
+
+      publisher->publish(msg);
+    }
+    
+    void pubCvGridMap(const CvGridMap &map, uint8_t zone, char band, const std::string &topic)
+    {
+      
+      auto publisher = publisher_[topic];
+
+      if (!publisher || publisher->get_subscription_count() == 0)
+        return;
+
+      std_msgs::msg::Header header;
+      header.frame_id = "utm";
+      header.stamp = this->now();
+
+      cv::Rect2d roi = map.roi();
+      realm::UTMPose utm;
+      utm.easting = roi.x + roi.width/2;
+      utm.northing = roi.y + roi.height/2;
+      utm.altitude = 0.0;
+      utm.zone = zone;
+      utm.band = band;
+
+      realm_msgs::msg::GroundImageCompressed msg;
+      std::vector<std::string> layer_names = map.getAllLayerNames();
+
+      if (layer_names.size() == 1)
+      {
+        msg = to_ros::groundImage(header, map[layer_names[0]], utm, map.resolution());
+      }
+      else if (layer_names.size() == 2)
+      {
+        msg = to_ros::groundImage(header, map[layer_names[0]], utm, map.resolution(), map[layer_names[1]]); 
+      }
+      else
+      {
+        throw(std::invalid_argument("Error publishing CvGridMap: More than one layer provided!"));
+      }
+
+      publisher->publish(msg);
+    }
+
+    void pubTrajectory(const std::vector<geometry_msgs::msg::PoseStamped> &traj, const std::string &topic)
+    {
+      
+      if (traj.empty()) {
+        return;
+      }
+
+      auto publisher = _publisher[topic];
+
+      if (!publisher || publisher->get_subscription_count() == 0)
+        return;
+
+      nav_msgs::msg::Path msg;
+      msg.header = traj.back().header;
+      msg.poses = traj;
+
+      publisher->publish(msg);
+    }
+
+    bool srvFinish(const std::shared_ptr<std_srvs::srv::Trigger::Request> req, std::shared_ptr<std_srvs::srv::Trigger::Response> res)
+    {
+      
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Requesting stage finishCallback...!", _type_stage.c_str());
+      _stage->requestFinish();
+      _stage->join();
+      res->success = 1; 
+      res->message = "Successfully finished stage!";
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Successfully finished stage!", _type_stage.c_str());
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Shutting stage node down...", _type_stage.c_str());
+      std::unique_lock<std::mutex> lock(_mutex_do_shutdown);
+      _do_shutdown = true;
+      return true;
+    }
+
+    bool srvStop(const std::shared_ptr<std_srvs::srv::Trigger::Request> req, std::shared_ptr<std_srvs::srv::Trigger::Response> res)
+    {
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Requesting stage stop...!", _type_stage.c_str());
+      _stage->requestStop();
+      res->success = 1;
+      res->message = "Successfully stopped stage!";
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Successfully stopped stage!", _type_stage.c_str());
+      return true;
+    }
+
+    bool srvResume(const std::shared_ptr<std_srvs::srv::Trigger::Request> req, std::shared_ptr<std_srvs::srv::Trigger::Response> res)
+    {
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Requesting stage resume...!", _type_stage.c_str());
+      _stage->resume();
+      res->success = 1;
+      res->message = "Successfully resumed stage!";
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Successfully resumed stage!", _type_stage.c_str());
+      return true;
+    }
+
+    bool srvReset(const std::shared_ptr<std_srvs::srv::Trigger::Request> req, std::shared_ptr<std_srvs::srv::Trigger::Response> res)
+    {
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Requesting stage reset...!", _type_stage.c_str());
+      _stage->requestReset();
+      res->success = 1;
+      res->message = "Successfully reset stage!";
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Successfully reset stage!", _type_stage.c_str());
+      return true;
+    }
+
+    bool srvChangeParam(const std::shared_ptr<realm_msgs::srv::ParameterChange::Request> req, std::shared_ptr<realm_msgs::srv::ParameterChange::Response> res)
+    {
+      RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Changing stage parameter %s to value %s...", _type_stage.c_str(), req->name.c_str(), req->val.c_str());
+      if (_stage->changeParam(req->name, req->val))
+      {
+        RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Successfully changed parameter!", _type_stage.c_str());
+        res->success = 1;
+        res->message = "Successfully changed parameter!";
+        return true;
+      }
+      else
+      {
+        RCLCPP_INFO(this->get_logger(), "STAGE_NODE [%s]: Failed to change parameter!", _type_stage.c_str());
+        res->success = 0;
+        res->message = "Failed to change parameter!";
+        return false;
+      }
+    }
 
 
     void timer_callback()
