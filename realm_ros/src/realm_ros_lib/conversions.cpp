@@ -653,7 +653,7 @@ realm_msgs::CvGridMap to_ros::cvGridMap(const std_msgs::Header &header, const re
   return msg;
 }
 
-cv::Mat realm_to_realm::pointCloud(const sensor_msgs::Image &msg)
+cv::Mat realm::to_realm::pointCloud(const sensor_msgs::Image &msg)
 {
   cv::Mat point_cloud;
   try
