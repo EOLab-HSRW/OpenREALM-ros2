@@ -101,7 +101,6 @@ geographic_msgs::GeoPoint to_ros::wgs84(const realm::UTMPose &r_utm)
   return geodesy::toMsg(g_utm);
 }
 
-
 realm::UTMPose to_realm::utm(const sensor_msgs::NavSatFix &gnss, const std_msgs::Float32 &heading)
 {
   geographic_msgs::GeoPoint wgs;
@@ -260,7 +259,6 @@ realm::Frame::Ptr to_realm::frame(const realm_msgs::Frame &msg)
   return std::move(frame);
 }
 
-
 realm_msgs::Pinhole to_ros::pinhole(const realm::camera::Pinhole::ConstPtr &cam)
 {
   realm_msgs::Pinhole msg;
@@ -417,7 +415,6 @@ geometry_msgs::Pose to_ros::poseWgs84(const cv::Mat &cv_pose, uint8_t zone, char
   wgs_pose.orientation = utm_pose.orientation;
   return wgs_pose;
 }
-
 
 cv::Mat to_realm::pose(const geometry_msgs::Pose &ros_pose)
 {
@@ -656,7 +653,7 @@ realm_msgs::CvGridMap to_ros::cvGridMap(const std_msgs::Header &header, const re
   return msg;
 }
 
-cv::Mat realm::to_realm::pointCloud(const sensor_msgs::Image &msg)
+cv::Mat realm_to_realm::pointCloud(const sensor_msgs::Image &msg)
 {
   cv::Mat point_cloud;
   try
