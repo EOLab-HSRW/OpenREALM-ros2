@@ -653,7 +653,7 @@ realm_msgs::CvGridMap to_ros::cvGridMap(const std_msgs::Header &header, const re
   return msg;
 }
 
-cv::Mat realm::to_realm::pointCloud(const sensor_msgs::Image &msg)
+cv::Mat to_realm::pointCloud(const sensor_msgs::Image &msg)
 {
   cv::Mat point_cloud;
   try
@@ -667,7 +667,7 @@ cv::Mat realm::to_realm::pointCloud(const sensor_msgs::Image &msg)
   return point_cloud;
 }
 
-cv::Mat realm::to_realm::image(const sensor_msgs::Image &msg)
+cv::Mat to_realm::image(const sensor_msgs::Image &msg)
 {
   cv_bridge::CvImagePtr img_ptr;
   try
@@ -681,7 +681,7 @@ cv::Mat realm::to_realm::image(const sensor_msgs::Image &msg)
   return img_ptr->image;
 }
 
-cv::Mat realm::to_realm::imageCompressed(const sensor_msgs::CompressedImage &msg)
+cv::Mat to_realm::imageCompressed(const sensor_msgs::CompressedImage &msg)
 {
   cv_bridge::CvImagePtr img_ptr;
   try
