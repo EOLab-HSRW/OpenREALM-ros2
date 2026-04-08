@@ -1,0 +1,32 @@
+@startuml
+actor alexa
+boundary ": stage_node_main" as main
+
+alexa -> main : main(argc:int,argv:char**)
+activate main
+	main ->o? : ros::init(argc, argv)
+
+	create control "StageNode:node" as node
+	main -> node : node(argc, argv)
+	activate node
+		node -> node : ""readParams()""
+		activate node
+			node ->o? : ros::NodeHandle:param_nh("\~")
+			loop 11 times
+				node ->o? : param_nh.param()
+				node <-o? : "<node member filled>"
+			end
+		deactivate node
+		node -> node : setPaths()
+		activate node
+			alt _path_working_directory == "uninitialised"
+				node ->o? : ros::package::getPath("realm_ros")
+			end
+			node ->o? : io::dirExists(_path_profile)
+			node ->o? : io::dirExists(_path_output)
+			alt "_path_output doesn´t exist"
+				node ->o? : io::createDir(_path_output)
+			end
+		deactivate node
+			
+@enduml
