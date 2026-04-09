@@ -28,5 +28,24 @@ activate main
 				node ->o? : io::createDir(_path_output)
 			end
 		deactivate node
-			
+		node -> node : readStageSettings()
+		activate node
+			group Function parameters
+				node ->o? : _type_stage.c_str()
+            	node ->o? : _file_settings_stage.c_str()
+            end
+            node ->o? : ros::ROS_INFO("Descriptive string",\n\t\t\t_type_stage.c_str(),\n\t\t\t_file_settings_stage.c_str())
+            note right : MACRO
+            group Function parameters
+				node ->o? : _type_stage.c_str()
+            	node ->o? : (*_settings_stage)["type"].toString()
+            	node ->o? : (*_settings_stage)["type"].toString().c_str()
+            end
+            node ->o? : ros::ROS_INFO("Descriptive string",\n\t\t\t_type_stage.c_str(),\n\t\t\t(*_settings_stage)["type"].toString().c_str())
+            note right : MACRO
+        deactivate node
+        group Function parameters
+			node ->o? : ros::TransportHints()
+    	end
+    	node ->o? : _nh.subscribe(\t_topic_frame_in,\n\t\t\t5,\n\t\t\t&StageNode::subFrame,\n\t\t\tthis,\n\t\t\tros::TransportHints())
 @enduml
