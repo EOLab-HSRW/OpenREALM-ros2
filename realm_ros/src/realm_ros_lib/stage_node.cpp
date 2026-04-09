@@ -513,9 +513,14 @@ bool StageNode::srvChangeParam(realm_msgs::ParameterChange::Request &req, realm_
 void StageNode::readStageSettings()
 {
   // Load stage settings
-  ROS_INFO("STAGE_NODE [%s]: Loading stage settings from path:\n\t%s", _type_stage.c_str(), _file_settings_stage.c_str());
+  ROS_INFO( "STAGE_NODE [%s]: Loading stage settings from path:\n\t%s", 
+            _type_stage.c_str(), 
+            _file_settings_stage.c_str()
+          );
   _settings_stage = StageSettingsFactory::load(_type_stage, _file_settings_stage);
-  ROS_INFO("STAGE_NODE [%s]: Detected stage type: '%s'", _type_stage.c_str(), (*_settings_stage)["type"].toString().c_str());
+  ROS_INFO( "STAGE_NODE [%s]: Detected stage type: '%s'", 
+            _type_stage.c_str(), 
+            (*_settings_stage)["type"].toString().c_str());
 }
 
 void StageNode::readParams()
