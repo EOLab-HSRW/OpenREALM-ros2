@@ -530,8 +530,8 @@ void StageNode::readParams()
   // Read parameters from launch file
   ros::NodeHandle param_nh("~");
   // NodeHandle::param() takes a field from the StageNode instance and fills it.
-  param_nh.param("stage/type", _type_stage, std::string("uninitialised"));
   param_nh.param("stage/master", _is_master_stage, false);
+  param_nh.param("stage/type", _type_stage, std::string("uninitialised"));
   param_nh.param("stage/output_dir", _path_output, std::string("uninitialised"));
   param_nh.param("topics/input/frame", _topic_frame_in, std::string("uninitialised"));
   param_nh.param("topics/input/imu", _topic_imu_in, std::string("uninitialised"));
