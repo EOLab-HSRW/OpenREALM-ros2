@@ -45,8 +45,10 @@ StageNode::StageNode(int argc, char **argv)
   _sub_input_frame = _nh.subscribe(_topic_frame_in, 5, &StageNode::subFrame, this, ros::TransportHints());
   if (_is_master_stage)
   {
-    _publisher.insert({"general/output_dir", _nh.advertise<std_msgs::String>("/realm/" + _id_camera + "/general/output_dir", 5)});
-    _publisher.insert({"general/gnss_base", _nh.advertise<sensor_msgs::NavSatFix>("/realm/" + _id_camera + "/general/gnss_base", 5)});
+    _publisher.insert({"general/output_dir", 
+                        _nh.advertise<std_msgs::String>("/realm/" + _id_camera + "/general/output_dir", 5)});
+    _publisher.insert({"general/gnss_base", 
+                        _nh.advertise<sensor_msgs::NavSatFix>("/realm/" + _id_camera + "/general/gnss_base", 5)});
   }
   else
     _sub_output_dir = _nh.subscribe("/realm/"+ _id_camera +"/general/output_dir", 5, &StageNode::subOutputPath, this, ros::TransportHints());
