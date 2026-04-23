@@ -12,8 +12,13 @@ activate main
 		node -> node : ""readParams()""
 		activate node
 			node ->o? : ros::NodeHandle:param_nh("\~")
-			loop 11 times
-				node ->o? : param_nh.param()
+			node ->o? : param_nh.param("stage/master", _is_master_stage, false)
+			node <-o? : "<node member filled>"
+			loop 10 times
+				note right of node: "stage/type"\t\t|  _type_stage \t\t"topics/output"\t\t| _topic_frame_out\n"stage/output_dir"\t|  _path_output\t\t"config/id"\t\t| _id_camera\n"topics/input/frame"|  _topic_frame_in\t"config/profile"\t\t| _profile\n"topics/input/imu"\t|  _topic_imu_in\t"config/method"\t| _method\n"config/opt/working_directory"| _path_working_directory\n"config/opt/output_directory"\t| _path_output
+				node ->o? : std::string("uninitialised")
+				node <-o? : std::string
+				node ->o? : param_nh.param("<config_par>", <field>, std::string("uninitialised"))
 				node <-o? : "<node member filled>"
 			end
 		deactivate node
@@ -21,31 +26,90 @@ activate main
 		activate node
 			alt _path_working_directory == "uninitialised"
 				node ->o? : ros::package::getPath("realm_ros")
+    			node <-o? : return std::string
 			end
 			node ->o? : io::dirExists(_path_profile)
+    		node <-o? : return bool
+    		alt "_path_profile doesnt exist"
+    			group Function parameters
+					node ->o? : std::runtime_error(\t"Error: Profile folder '" \n\t\t\t\t+ _path_profile \n\t\t\t\t+ "' was not found!")
+					node <-o? : return std::runtime_error
+				end
+				node ->o? : throw(std::runtime_error("Error: Profile folder '" \n\t\t\t\t\t+ _path_profile \n\t\t\t\t\t+ "' was not found!"))
+    		end
 			node ->o? : io::dirExists(_path_output)
+    			node <-o? : return bool
 			alt "_path_output doesn´t exist"
 				node ->o? : io::createDir(_path_output)
+			end
+			alt "_is_master_stage true"
+				node ->o? : io::getDateTime()
+    			node <-o? : return std::string
+    			node ->o? : io::dirExists(_path_output + "/" + _dir_date_time)
+    			node <-o? : return bool
+    			alt "_path_output/dir_date_time doesn´t exist"
+    				node ->o? : io::createDir(_path_output + "/" + _dir_date_time);
+    			end
 			end
 		deactivate node
 		node -> node : readStageSettings()
 		activate node
 			group Function parameters
 				node ->o? : _type_stage.c_str()
+				node <-o? : return const char*
             	node ->o? : _file_settings_stage.c_str()
+				node <-o? : return const char*
             end
             node ->o? : ros::ROS_INFO("Descriptive string",\n\t\t\t_type_stage.c_str(),\n\t\t\t_file_settings_stage.c_str())
             note right : MACRO
             group Function parameters
 				node ->o? : _type_stage.c_str()
+				node <-o? : return const char*
             	node ->o? : (*_settings_stage)["type"].toString()
+				node <-o? : return const std::string
             	node ->o? : (*_settings_stage)["type"].toString().c_str()
+				node <-o? : return const char*
             end
             node ->o? : ros::ROS_INFO("Descriptive string",\n\t\t\t_type_stage.c_str(),\n\t\t\t(*_settings_stage)["type"].toString().c_str())
             note right : MACRO
         deactivate node
         group Function parameters
 			node ->o? : ros::TransportHints()
+			node <-o? : return tbd
     	end
     	node ->o? : _nh.subscribe(\t_topic_frame_in,\n\t\t\t5,\n\t\t\t&StageNode::subFrame,\n\t\t\tthis,\n\t\t\tros::TransportHints())
+    	alt "_is_master_stage true"
+    		group Function parameters
+    			node ->o? : _nh.advertise<std_msgs::String>(\t"/realm/"\n\t\t\t\t\t\t\t+ _id_camera \n\t\t\t\t\t\t\t+ "/general/output_dir",\n\t\t\t\t\t\t\t5)
+    			node <-o? : return tbd
+    		end
+    		node ->o? : _publisher.insert({\t"general/output_dir",\n\t\t\t\t_nh.advertise<std_msgs::String>(\t"/realm/"\n\t\t\t\t\t\t\t\t\t\t\t+ _id_camera\n\t\t\t\t\t\t\t\t\t\t\t+ "/general/output_dir",\n\t\t\t\t\t\t\t\t\t\t\t5)})
+    		group Function parameters
+    			node ->o? : _nh.advertise<sensor_msgs::NavSatFix>("/realm/"\n\t\t\t\t\t\t\t\t + _id_camera \n\t\t\t\t\t\t\t\t + "/general/gnss_base",\n\t\t\t\t\t\t\t\t 5)
+    			node <-o? : return tbd
+    		end
+    		node ->o? : _publisher.insert({\t"general/gnss_base",\n\t\t\t\t_nh.advertise<sensor_msgs::NavSatFix>("/realm/"\n\t\t\t\t\t\t\t\t\t\t\t\t + _id_camera\n\t\t\t\t\t\t\t\t\t\t\t\t + "/general/gnss_base",\n\t\t\t\t\t\t\t\t\t\t\t\t 5)})
+    	else 
+    		group Function parameters
+    			node ->o? : ros::TransportHints()
+    			node <-o? : return tbd
+    		end
+    		node ->o? : _nh.subscribe(\t"/realm/"+ _id_camera +"/general/output_dir", \n\t\t\t5, \n\t\t\t&StageNode::subOutputPath, \n\t\t\tthis, \n\t\t\tros::TransportHints())
+    	end
+    	
+    	loop 4 times
+    		node ->o? : _nh.advertiseService(_topic_prefix + "request_<action>", \n\t\t\t\t  &StageNode::srv<Action>, \n\t\t\t\t  this);
+    		note left : finish\nstop\nresume\nreset
+    		node <-o? : return ros::ServiceServer
+    	end
+    	node ->o? : _nh.advertiseService(_topic_prefix + "change_param", \n\t\t\t\t  &StageNode::srvChangeParam, \n\t\t\t\t  this);
+    	node <-o? : return ros::ServiceServer
+    	group Function parameters 
+    		node ->o? : _type_stage.c_str()
+			node <-o? : return const char*
+    		node ->o? : _file_settings_camera.c_str()
+			node <-o? : return const char*
+    	end
+    	node ->o? : ROS_INFO("STAGE_NODE [%s]: : Loading camera from path:\\n\ t%s",\n\t\t _type_stage.c_str(),\n\t\t _file_settings_camera.c_str()
+    	note left : MACRO
 @enduml
