@@ -82,6 +82,8 @@ StageNode::StageNode(int argc, char **argv)
     createStageMosaicing();
   if (_type_stage == "tileing")
     createStageTileing();
+  // Moved here from the createStageX functions, as it is not connected to anything in them and they all call it at the end.
+  linkStageTransport();
 
   // set stage path if master stage
   if (_is_master_stage)
@@ -167,7 +169,6 @@ void StageNode::createStagePoseEstimation()
   _publisher.insert({"output/pose/gnss/traj", _nh.advertise<nav_msgs::Path>(_topic_prefix + "pose/gnss/traj", 5)});
   _publisher.insert({"output/pointcloud", _nh.advertise<sensor_msgs::PointCloud2>(_topic_prefix + "pointcloud", 5)});
   _publisher.insert({"debug/tracked", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "tracked", 5)});
-  linkStageTransport();
 
   if (_topic_imu_in != "uninitialised")
   {
@@ -191,7 +192,6 @@ void StageNode::createStageDensification()
   _publisher.insert({"output/img_rectified", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "img", 5)});
   _publisher.insert({"output/depth", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "depth", 5)});
   _publisher.insert({"output/depth_display", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "depth_display", 5)});
-  linkStageTransport();
 }
 
 void StageNode::createStageSurfaceGeneration()
@@ -199,7 +199,6 @@ void StageNode::createStageSurfaceGeneration()
   _stage = std::make_shared<stages::SurfaceGeneration>(_settings_stage, (*_settings_camera)["fps"].toDouble());
   _publisher.insert({"output/frame", _nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)});
   _publisher.insert({"output/elevation_map", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "elevation_map", 5)});
-  linkStageTransport();
 }
 
 void StageNode::createStageOrthoRectification()
@@ -208,7 +207,6 @@ void StageNode::createStageOrthoRectification()
   _publisher.insert({"output/frame", _nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)});
   _publisher.insert({"output/rectified", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "rectified", 5)});
   _publisher.insert({"output/pointcloud", _nh.advertise<sensor_msgs::PointCloud2>(_topic_prefix + "pointcloud", 5)});
-  linkStageTransport();
 }
 
 void StageNode::createStageMosaicing()
@@ -220,7 +218,6 @@ void StageNode::createStageMosaicing()
   _publisher.insert({"output/mesh", _nh.advertise<visualization_msgs::Marker>(_topic_prefix + "mesh", 5)});
   _publisher.insert({"output/update/ortho", _nh.advertise<realm_msgs::GroundImageCompressed>(_topic_prefix + "update/ortho", 5)});
   //_publisher.insert({"output/update/elevation", _nh.advertise<realm_msgs::GroundImageCompressed>(_topic_prefix + "update/elevation", 5)});
-  linkStageTransport();
 }
 
 void StageNode::createStageTileing()
@@ -231,7 +228,6 @@ void StageNode::createStageTileing()
   //_publisher.insert({"output/pointcloud", _nh.advertise<sensor_msgs::PointCloud2>(_topic_prefix + "pointcloud", 5)});
   //_publisher.insert({"output/mesh", _nh.advertise<visualization_msgs::Marker>(_topic_prefix + "mesh", 5)});
   //_publisher.insert({"output/update/ortho", _nh.advertise<realm_msgs::GroundImageCompressed>(_topic_prefix + "update/ortho", 5)});
-  linkStageTransport();
 }
 
 void StageNode::linkStageTransport()
