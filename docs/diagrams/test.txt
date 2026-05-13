@@ -122,4 +122,103 @@ activate main
     	end
     	node -[#red]>o? : ROS_INFO("STAGE_NODE [%s]: : Detected camera model: '%s'",\n\t\t _type_stage.c_str(),\n\t\t (*_settings_camera)["type"].toString().c_str())
     	note left : MACRO
+    	alt _type_stage == "pose_estimation"
+    		node -> node : createStagePoseEstimation()
+    		activate node
+    			group Function parameters
+    				node ->o? : _type_stage.c_str()
+    				node <-o? : return const char*
+    				node ->o? : _file_settings_method.c_str()
+    				node <-o? : return const char*
+    			end
+    			node -[#red]>o? : ROS_INFO("STAGE_NODE [%s]: : Loading vslam settings from path:\\n\\ t%s",\n\t\t _type_stage.c_str(),\n\t\t _file_settings_method.c_str());
+    			note left : MACRO
+    			node ->o? : VisualSlamSettingsFactory::load(\t_file_settings_method,\n\t\t\t\t\t\t\t_path_profile + "/" + _type_stage + "/method");
+    			node <-o? : return VisualSlamSettings::Ptr
+    			group Function parameters
+    				node ->o? : _type_stage.c_str()
+    				node <-o? : return const char*
+    				node ->o? : (*settings_vslam)["type"].toString()
+    				node <-o? : return std::string
+    				node ->o? : (*settings_vslam)["type"].toString().c_str()
+    				node <-o? : return const char*
+    			end
+    			node -[#red]>o? : ROS_INFO("STAGE_NODE [%s]: : Detected vslam type: '%s'",\n\t\t _type_stage.c_str(),\n\t\t (*settings_vslam)["type"].toString().c_str())
+    			note left : MACRO
+    			node ->o? : (*_settings_stage)["use_imu"].toInt()
+    			node <-o? : return int
+    			alt (*_settings_stage)["use_imu"] > 0
+    				node ->o? : std::make_shared<ImuSettings>()
+    				node <-o? : return *ImuSettings
+    				node ->o? : settings_imu->loadFromFile(_file_settings_imu)
+    			end
+    			group Function parameters
+    				node ->o? : (*_settings_camera)["fps"].toDouble()
+    				node <-o? : return double
+    			end
+    			node ->o? : std::make_shared<stages::PoseEstimation>(\t_settings_stage, \n\t\t\t\t\t\t\t\t\tsettings_vslam, \n\t\t\t\t\t\t\t\t\t_settings_camera, \n\t\t\t\t\t\t\t\t\tsettings_imu, \n\t\t\t\t\t\t\t\t\t(*_settings_camera)["fps"].toDouble())
+    			group Function parameters
+    				node -[#red]>o? : _nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)
+  					node <[#red]-o? : return tbd
+    			end
+    			node -[#red]>o? : _publisher.insert({\t"output/frame",\n\t\t\t\t_nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)});
+    			loop 7 times
+					note right of node: pose/visual/utm\t| geometry_msgs::PoseStamped\npose/visual/wgs\t| geometry_msgs::PoseStamped\npose/visual/traj\t| nav_msgs::Path\npose/gnss/utm\t\t| geometry_msgs::PoseStamped\npose/gnss/wgs\t\t| geometry_msgs::PoseStamped\npose/gnss/traj\t\t| nav_msgs::Path\npointcloud\t\t| sensor_msgs::PointCloud2
+					group Function parameters
+						skinparam guillemet false
+						node -[#red]>o? : _nh.advertise<<type>>(_topic_prefix + "<parameter>", 5)
+						node <[#red]-o? : return tbd
+					end
+					node -[#red]>o? : _publisher.insert({\t"output/<parameter>",\n\t\t\t\t_nh.advertise<<type>>(_topic_prefix + "<parameter>", 5)});
+				end
+				group Function parameters
+    				node -[#red]>o? : _nh.advertise<sensor_msgs::Image>(_topic_prefix + "tracked", 5)
+  					node <[#red]-o? : return tbd
+    			end
+    			node -[#red]>o? : _publisher.insert({\t"debug/tracked",\n\t\t\t\t_nh.advertise<sensor_msgs::Image>(_topic_prefix + "tracked", 5)});
+    			node -> node : linkStageTransport()
+    			activate node
+    				note right of node #red: Ask Harley if the linkStageTransport needs to \nbe in the called functions if they all end in it? 
+    				loop 5 times
+    					note right of node: StageNode::pubFrame\nStageNode::pubPointCloud\nStageNode::pubImage\nStageNode::pubDepthMap\nStageNode::pubMesh
+    					node ->o? : std::bind(&<type>, this, ph::_1, ph::_2);
+  						node <-o? : return tbd
+					end
+					node ->o? : std::bind(&StageNode::pubPose, this, ph::_1, ph::_2, ph::_3, ph::_4);
+  					node <-o? : return tbd
+  					node ->o? : std::bind(&StageNode::pubCvGridMap, this, ph::_1, ph::_2, ph::_3, ph::_4);
+  					node <-o? : return tbd
+  					node ->o? : _stage->registerFrameTransport(transport_frame);
+					node ->o? : _stage->registerPoseTransport(transport_pose);
+					node ->o? : _stage->registerPointCloudTransport(transport_pointcloud);
+					node ->o? : _stage->registerImageTransport(transport_img);
+					node ->o? : _stage->registerDepthMapTransport(transport_img);
+					node ->o? : _stage->registerMeshTransport(transport_mesh);
+					node ->o? : _stage->registerCvGridMapTransport(transport_cvgridmap);
+    			deactivate node
+				alt _topic_imu_in != "uninitialised"
+					group Function paramaters
+						node -[#red]>o? : ros::TransportHints()
+						node <[#red]-o? : return tbd
+					end
+					node -[#red]>o? : _nh.subscribe(_topic_imu_in, 100, &StageNode::subImu, this, ros::TransportHints())
+				end
+    		deactivate node
+    	end
+    	alt _type_stage == "densification"
+    		node -> node : createStageDensification()
+    		activate node
+    			group Function paramaters
+    				node ->o? : _type_stage.c_str()
+    				node <-o? : return const char*
+    				node ->o? : _file_settings_method.c_str()
+    				node <-o? : return const char*
+    			end
+  				node -[#red]>o? : ROS_INFO("STAGE_NODE [%s]: : Loading densifier settings from path:\\n\ t%s",\n\t\t _type_stage.c_str(), \n\t\t _file_settings_method.c_str())
+    			note left : MACRO
+    			node ->o? : DensifierSettingsFactory::load(_file_settings_method, \n\t\t\t\t\t\t _path_profile + "/" + _type_stage + "/method")
+    			node <-o? : return DensifierSettings::Ptr
+    		deactivate node
+    	end
+	deactivate node
 @enduml
