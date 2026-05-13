@@ -61,9 +61,13 @@ StageNode::StageNode(int argc, char **argv)
   _srv_change_param = _nh.advertiseService(_topic_prefix + "change_param", &StageNode::srvChangeParam, this);
 
   // Provide camera information a priori to all stages
-  ROS_INFO("STAGE_NODE [%s]: : Loading camera from path:\n\t%s", _type_stage.c_str(),_file_settings_camera.c_str());
+  ROS_INFO("STAGE_NODE [%s]: : Loading camera from path:\n\t%s",
+           _type_stage.c_str(),
+           _file_settings_camera.c_str());
   _settings_camera = CameraSettingsFactory::load(_file_settings_camera);
-  ROS_INFO("STAGE_NODE [%s]: : Detected camera model: '%s'", _type_stage.c_str(), (*_settings_camera)["type"].toString().c_str());
+  ROS_INFO("STAGE_NODE [%s]: : Detected camera model: '%s'",
+           _type_stage.c_str(),
+            (*_settings_camera)["type"].toString().c_str());
 
   // Create stages
   if (_type_stage == "pose_estimation")
@@ -132,9 +136,14 @@ bool StageNode::isOkay()
 void StageNode::createStagePoseEstimation()
 {
   // Pose estimation uses external frameworks, therefore load settings for that
-  ROS_INFO("STAGE_NODE [%s]: : Loading vslam settings from path:\n\t%s", _type_stage.c_str(), _file_settings_method.c_str());
-  VisualSlamSettings::Ptr settings_vslam = VisualSlamSettingsFactory::load(_file_settings_method, _path_profile + "/" + _type_stage + "/method");
-  ROS_INFO("STAGE_NODE [%s]: : Detected vslam type: '%s'", _type_stage.c_str(), (*settings_vslam)["type"].toString().c_str());
+  ROS_INFO("STAGE_NODE [%s]: : Loading vslam settings from path:\n\t%s",
+           _type_stage.c_str(),
+           _file_settings_method.c_str());
+  VisualSlamSettings::Ptr settings_vslam = VisualSlamSettingsFactory::load(_file_settings_method,
+                                                                           _path_profile + "/" + _type_stage + "/method");
+  ROS_INFO("STAGE_NODE [%s]: : Detected vslam type: '%s'",
+           _type_stage.c_str(),
+           (*settings_vslam)["type"].toString().c_str());
 
   ImuSettings::Ptr settings_imu = nullptr;
   if ((*_settings_stage)["use_imu"].toInt() > 0)
@@ -144,7 +153,11 @@ void StageNode::createStagePoseEstimation()
   }
 
   // Topic and stage creation
-  _stage = std::make_shared<stages::PoseEstimation>(_settings_stage, settings_vslam, _settings_camera, settings_imu, (*_settings_camera)["fps"].toDouble());
+  _stage = std::make_shared<stages::PoseEstimation>(_settings_stage, 
+                                                    settings_vslam, 
+                                                    _settings_camera, 
+                                                    settings_imu, 
+                                                    (*_settings_camera)["fps"].toDouble());
   _publisher.insert({"output/frame", _nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)});
   _publisher.insert({"output/pose/visual/utm", _nh.advertise<geometry_msgs::PoseStamped>(_topic_prefix + "pose/visual/utm", 5)});
   _publisher.insert({"output/pose/visual/wgs", _nh.advertise<geometry_msgs::PoseStamped>(_topic_prefix + "pose/visual/wgs", 5)});
@@ -225,11 +238,11 @@ void StageNode::linkStageTransport()
 {
   namespace ph = std::placeholders;
   auto transport_frame = std::bind(&StageNode::pubFrame, this, ph::_1, ph::_2);
-  auto transport_pose = std::bind(&StageNode::pubPose, this, ph::_1, ph::_2, ph::_3, ph::_4);
   auto transport_pointcloud = std::bind(&StageNode::pubPointCloud, this, ph::_1, ph::_2);
   auto transport_img = std::bind(&StageNode::pubImage, this, ph::_1, ph::_2);
   auto transport_depth = std::bind(&StageNode::pubDepthMap, this, ph::_1, ph::_2);
   auto transport_mesh = std::bind(&StageNode::pubMesh, this, ph::_1, ph::_2);
+  auto transport_pose = std::bind(&StageNode::pubPose, this, ph::_1, ph::_2, ph::_3, ph::_4);
   auto transport_cvgridmap = std::bind(&StageNode::pubCvGridMap, this, ph::_1, ph::_2, ph::_3, ph::_4);
   _stage->registerFrameTransport(transport_frame);
   _stage->registerPoseTransport(transport_pose);
