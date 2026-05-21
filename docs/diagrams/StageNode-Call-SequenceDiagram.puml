@@ -218,6 +218,16 @@ activate main
     			note left : MACRO
     			node ->o? : DensifierSettingsFactory::load(_file_settings_method, \n\t\t\t\t\t\t _path_profile + "/" + _type_stage + "/method")
     			node <-o? : return DensifierSettings::Ptr
+    			group Function paramaters
+    				node ->o? : _type_stage.c_str()
+    				node <-o? : return const char*
+    				node ->o? : (*settings_densifier)["type"].toString()
+    				node <-o? : return std::string
+    				node ->o? : (*settings_densifier)["type"].toString().c_str()
+    				node <-o? : return const char*
+    			end
+    			node -[#red]>o? : ROS_INFO("STAGE_NODE [%s]: : Detected densifier type: '%s'",\n\t\t _type_stage.c_str(),\n\t\t (*settings_densifier)["type"].toString().c_str());
+    			note left : MACRO
     		deactivate node
     	end
 	deactivate node
