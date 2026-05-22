@@ -189,9 +189,9 @@ void StageNode::createStageDensification()
   _publisher.insert({"output/pose/utm", _nh.advertise<geometry_msgs::PoseStamped>(_topic_prefix + "pose/utm", 5)});
   _publisher.insert({"output/pose/wgs", _nh.advertise<geometry_msgs::PoseStamped>(_topic_prefix + "pose/wgs", 5)});
   _publisher.insert({"output/pointcloud", _nh.advertise<sensor_msgs::PointCloud2>(_topic_prefix + "pointcloud", 5)});
-  _publisher.insert({"output/img_rectified", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "img", 5)});
   _publisher.insert({"output/depth", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "depth", 5)});
   _publisher.insert({"output/depth_display", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "depth_display", 5)});
+  _publisher.insert({"output/img_rectified", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "img", 5)});
 }
 
 void StageNode::createStageSurfaceGeneration()
