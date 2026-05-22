@@ -1,7 +1,12 @@
-@startuml
+@startuml StageNode-Call-SequenceDiagram
+<style>
+  /* Global style applied to all elements */
+  	element {
+		BackGroundColor: #ffffff
+  	}
+</style>
 actor alexa
 boundary ": stage_node_main" as main
-
 alexa -> main : main(argc:int,argv:char**)
 activate main
 	main -[#red]>o? : ros::init(argc, argv)
@@ -157,7 +162,8 @@ activate main
     				node <-o? : return double
     			end
     			node ->o? : std::make_shared<stages::PoseEstimation>(\t_settings_stage, \n\t\t\t\t\t\t\t\t\tsettings_vslam, \n\t\t\t\t\t\t\t\t\t_settings_camera, \n\t\t\t\t\t\t\t\t\tsettings_imu, \n\t\t\t\t\t\t\t\t\t(*_settings_camera)["fps"].toDouble())
-    			group Function parameters
+    			node <-o? : return StageBase::Ptr
+				group Function parameters
     				node -[#red]>o? : _nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)
   					node <[#red]-o? : return tbd
     			end
@@ -175,27 +181,7 @@ activate main
     				node -[#red]>o? : _nh.advertise<sensor_msgs::Image>(_topic_prefix + "tracked", 5)
   					node <[#red]-o? : return tbd
     			end
-    			node -[#red]>o? : _publisher.insert({\t"debug/tracked",\n\t\t\t\t_nh.advertise<sensor_msgs::Image>(_topic_prefix + "tracked", 5)});
-    			node -> node : linkStageTransport()
-    			activate node
-    				note right of node #red: Ask Harley if the linkStageTransport needs to \nbe in the called functions if they all end in it? 
-    				loop 5 times
-    					note right of node: StageNode::pubFrame\nStageNode::pubPointCloud\nStageNode::pubImage\nStageNode::pubDepthMap\nStageNode::pubMesh
-    					node ->o? : std::bind(&<type>, this, ph::_1, ph::_2);
-  						node <-o? : return tbd
-					end
-					node ->o? : std::bind(&StageNode::pubPose, this, ph::_1, ph::_2, ph::_3, ph::_4);
-  					node <-o? : return tbd
-  					node ->o? : std::bind(&StageNode::pubCvGridMap, this, ph::_1, ph::_2, ph::_3, ph::_4);
-  					node <-o? : return tbd
-  					node ->o? : _stage->registerFrameTransport(transport_frame);
-					node ->o? : _stage->registerPoseTransport(transport_pose);
-					node ->o? : _stage->registerPointCloudTransport(transport_pointcloud);
-					node ->o? : _stage->registerImageTransport(transport_img);
-					node ->o? : _stage->registerDepthMapTransport(transport_img);
-					node ->o? : _stage->registerMeshTransport(transport_mesh);
-					node ->o? : _stage->registerCvGridMapTransport(transport_cvgridmap);
-    			deactivate node
+    			node -[#red]>o? : _publisher.insert({\t"debug/tracked",\n\t\t\t\t_nh.advertise<sensor_msgs::Image>(_topic_prefix + "tracked", 5)})
 				alt _topic_imu_in != "uninitialised"
 					group Function paramaters
 						node -[#red]>o? : ros::TransportHints()
@@ -226,9 +212,104 @@ activate main
     				node ->o? : (*settings_densifier)["type"].toString().c_str()
     				node <-o? : return const char*
     			end
-    			node -[#red]>o? : ROS_INFO("STAGE_NODE [%s]: : Detected densifier type: '%s'",\n\t\t _type_stage.c_str(),\n\t\t (*settings_densifier)["type"].toString().c_str());
+    			node -[#red]>o? : ROS_INFO(\t"STAGE_NODE [%s]: : Detected densifier type: '%s'",\n\t\t\t_type_stage.c_str(),\n\t\t\t(*settings_densifier)["type"].toString().c_str())
     			note left : MACRO
-    		deactivate node
+				group Function paramaters
+					node ->o? : (*_settings_camera)["fps"].toDouble()
+					node <-o? : return double
+				end
+				node ->o? : std::make_shared<stages::Densification>(\t_settings_stage,\n\t\t\t\t\t\t\t\t\tsettings_densifier,\n\t\t\t\t\t\t\t\t\t(*_settings_camera)["fps"].toDouble())
+				node <-o? : return StageBase::Ptr
+				group Function parameters
+    				node -[#red]>o? : _nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)
+  					node <[#red]-o? : return tbd
+    			end
+    			node -[#red]>o? : _publisher.insert({\t"output/frame",\n\t\t\t\t_nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)})
+    			loop 5 times
+					note right of node: pose/utm\t\t| geometry_msgs::PoseStamped\npose/wgs\t\t| geometry_msgs::PoseStamped\npointcloud\t| sensor_msgs::PointCloud2\ndepth\t\t| sensor_msgs::Image\ndepth_display\t| sensor_msgs::Image
+					group Function parameters
+						skinparam guillemet false
+						node -[#red]>o? : _nh.advertise<<type>>(_topic_prefix + "<parameter>", 5)
+						node <[#red]-o? : return tbd
+					end
+					node -[#red]>o? : _publisher.insert({\t"output/<parameter>",\n\t\t\t\t_nh.advertise<<type>>(_topic_prefix + "<parameter>", 5)})
+				end
+				group Function parameters
+					skinparam guillemet false
+					node -[#red]>o? : _nh.advertise<sensor_msgs::Image>(_topic_prefix + "img", 5)
+					node <[#red]-o? : return tbd
+				end
+    			node -[#red]>o? : _publisher.insert({\t"output/img_rectified",\n\t\t\t\t_nh.advertise<sensor_msgs::Image>(_topic_prefix + "img", 5)})
+			deactivate node
     	end
+		alt _type_stage == "surface_generation"
+			node -> node : createStageSurfaceGeneration()
+			activate node
+				group Function paramaters
+					node ->o? : (*_settings_camera)["fps"].toDouble()
+					node <-o? : return double
+				end
+				node ->o? : std::make_shared<stages::SurfaceGeneration>(\t_settings_stage,\n\t\t\t\t\t\t\t\t\t\t(*_settings_camera)["fps"].toDouble())
+				node <-o? : return StageBase::Ptr
+				group Function parameters
+						node -[#red]>o? : _nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)
+						node <[#red]-o? : return tbd
+				end
+				node -[#red]>o? : _publisher.insert({\t"output/frame",\n\t\t\t\t_nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)})
+				group Function parameters
+					skinparam guillemet false
+					node -[#red]>o? : _nh.advertise<sensor_msgs::Image>(_topic_prefix + "elevation_map", 5)
+					node <[#red]-o? : return tbd
+				end
+    			node -[#red]>o? : _publisher.insert({\t"output/elevation_map",\n\t\t\t\t_nh.advertise<sensor_msgs::Image>(_topic_prefix + "elevation_map", 5)})
+			deactivate node
+		end
+		alt _type_stage == "ortho_rectification"
+			node -> node : createStageOrthoRectification()
+			activate node
+				group Function paramaters
+					node ->o? : (*_settings_camera)["fps"].toDouble()
+					node <-o? : return double
+				end
+				node ->o? : std::make_shared<stages::OrthoRectification>(\t_settings_stage,\n\t\t\t\t\t\t\t\t\t\t(*_settings_camera)["fps"].toDouble())
+				node <-o? : return StageBase::Ptr
+				group Function parameters
+						node -[#red]>o? : _nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)
+						node <[#red]-o? : return tbd
+				end
+				node -[#red]>o? : _publisher.insert({\t"output/frame",\n\t\t\t\t_nh.advertise<realm_msgs::Frame>(_topic_frame_out, 5)})
+				loop 2 times
+					note right of node: rectified\t\t| sensor_msgs::Image\npointcloud\t| sensor_msgs::PointCloud2
+					group Function parameters
+						skinparam guillemet false
+						node -[#red]>o? : _nh.advertise<<type>>(_topic_prefix + "<parameter>", 5)
+						node <[#red]-o? : return tbd
+					end
+					node -[#red]>o? : _publisher.insert({\t"output/<parameter>",\n\t\t\t\t_nh.advertise<<type>>(_topic_prefix + "<parameter>", 5)})
+				end
+			deactivate node
+		end
+
+
+		' Make sure to add all the createStageX function here before the call.
+		node -> node : linkStageTransport()
+		activate node
+			loop 5 times
+				note right of node: StageNode::pubFrame\nStageNode::pubPointCloud\nStageNode::pubImage\nStageNode::pubDepthMap\nStageNode::pubMesh
+				node ->o? : std::bind(&<type>, this, ph::_1, ph::_2);
+				node <-o? : return tbd
+			end
+			node ->o? : std::bind(&StageNode::pubPose, this, ph::_1, ph::_2, ph::_3, ph::_4);
+			node <-o? : return tbd
+			node ->o? : std::bind(&StageNode::pubCvGridMap, this, ph::_1, ph::_2, ph::_3, ph::_4);
+			node <-o? : return tbd
+			node ->o? : _stage->registerFrameTransport(transport_frame);
+			node ->o? : _stage->registerPoseTransport(transport_pose);
+			node ->o? : _stage->registerPointCloudTransport(transport_pointcloud);
+			node ->o? : _stage->registerImageTransport(transport_img);
+			node ->o? : _stage->registerDepthMapTransport(transport_img);
+			node ->o? : _stage->registerMeshTransport(transport_mesh);
+			node ->o? : _stage->registerCvGridMapTransport(transport_cvgridmap);
+		deactivate node
 	deactivate node
 @enduml
