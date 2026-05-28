@@ -348,5 +348,30 @@ activate main
 			node ->o? : _type_stage.c_str()
 		end
 		node -[#red]>o? : ROS_INFO(\t"STAGE_NODE [%s]: Started stage node successfully!", \n\t\t\t_type_stage.c_str())
+		return
 	deactivate node
+	' what does this do, ask harley.
+	main -[#red]>o? : rate(100)
+	main <[#red]-o? : return ros::Rate
+	loop node.isOkay()
+		group Loop criteria
+			main -> node : node.isOkay()
+			activate node
+				node ->o? : lock(_mutex_do_shutdown)
+				node <-o? : return  std::unique_lock<std::mutex>
+				group Return parameters
+					node -[#red]>o? : _nh.ok()
+				end
+				return boolean
+			deactivate node
+		end
+		main -[#red]>o? : ros::spinOnce()
+		main -> node : node.spin()
+		activate node
+			alt "_is_master_stage true"
+				' Ask Harley where _publisher belongs, is it ros or realm
+				node ->o? : _publisher["general/output_dir"].publish(msg)
+			end
+		deactivate node
+	end
 @enduml
