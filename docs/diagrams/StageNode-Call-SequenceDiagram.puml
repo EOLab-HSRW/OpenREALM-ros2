@@ -340,5 +340,13 @@ activate main
 			node ->o? : _stage->registerMeshTransport(transport_mesh);
 			node ->o? : _stage->registerCvGridMapTransport(transport_cvgridmap);
 		deactivate node
+		alt "_is_master_stage true"
+		node ->o? : _stage->initStagePath(_path_output + "/" + _dir_date_time)
+		end
+		node ->o? : _stage->start()
+		group Function parameters
+			node ->o? : _type_stage.c_str()
+		end
+		node -[#red]>o? : ROS_INFO(\t"STAGE_NODE [%s]: Started stage node successfully!", \n\t\t\t_type_stage.c_str())
 	deactivate node
 @enduml
