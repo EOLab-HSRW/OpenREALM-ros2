@@ -289,9 +289,38 @@ activate main
 				end
 			deactivate node
 		end
+		alt _type_stage == "mosaicing"
+			node -> node : createStageMosaicing()
+			activate node
+				group Function paramaters
+					node ->o? : (*_settings_camera)["fps"].toDouble()
+					node <-o? : return double
+				end
+				node ->o? : std::make_shared<stages::Mosaicing>(_settings_stage,\n\t\t\t\t\t\t\t\t(*_settings_camera)["fps"].toDouble())
+				node <-o? : return StageBase::Ptr
+				loop 5 times
+					note right of node: rgb\t\t\t| sensor_msgs::Image\nelevation\t\t| sensor_msgs::Image\npointcloud\t| sensor_msgs::PointCloud2\nmesh\t\t| visualization_msgs::Marker\nupdate/ortho\t| realm_msgs::GroundImageCompressed
+					group Function parameters
+						skinparam guillemet false
+						node -[#red]>o? : _nh.advertise<<type>>(_topic_prefix + "<parameter>", 5)
+						node <[#red]-o? : return tbd
+					end
+					node -[#red]>o? : _publisher.insert({\t"output/<parameter>",\n\t\t\t\t_nh.advertise<<type>>(_topic_prefix + "<parameter>", 5)})
+				end
+			deactivate node
+		end
+		alt _type_stage == "tileing"
+			node -> node : createStageTileing()
+			activate node
+				group Function paramaters
+					node ->o? : (*_settings_camera)["fps"].toDouble()
+					node <-o? : return double
+				end
+				node ->o? : std::make_shared<stages::Tileing>(\t_settings_stage,\n\t\t\t\t\t\t\t\t(*_settings_camera)["fps"].toDouble())
+				node <-o? : return StageBase::Ptr
+			deactivate node
+		end
 
-
-		' Make sure to add all the createStageX function here before the call.
 		node -> node : linkStageTransport()
 		activate node
 			loop 5 times
