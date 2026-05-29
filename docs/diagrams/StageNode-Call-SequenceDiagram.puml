@@ -372,6 +372,35 @@ activate main
 				' Ask Harley where _publisher belongs, is it ros or realm
 				node ->o? : _publisher["general/output_dir"].publish(msg)
 			end
+			alt "_is_tf_base_initialized & _is_master_stage both true"
+				group Function parameters
+					group Function parameters
+						node -[#red]>o? : ros::Time::now()
+						node <[#red]-o? : return tbd 
+					end
+					' Ask if this is a constructor
+					node ->o? : tf::StampedTransform(\t_tf_base,\n\t\t\t\t\tros::Time::now(),\n\t\t\t\t\t"utm",\n\t\t\t\t\t_tf_base_frame_name)
+					node <-o? : return tbd
+				end
+				' Ask Harley where tf is, ros or realm
+				node ->o? :  br.sendTransform(tf::StampedTransform(_tf_base,\n\t\t\t\t\t\t\t\t  ros::Time::now(),\n\t\t\t\t\t\t\t\t  "utm",\n\t\t\t\t\t\t\t\t  _tf_base_frame_name))
+				' Ask about _publisher
+				node ->o? : _publisher["general/gnss_base"].publish(_gnss_base)
+			end
+			alt "_is_tf_stage_initialized true"
+				group Function parameters
+					group Function parameters
+						node -[#red]>o? : ros::Time::now()
+						node <[#red]-o? : retrun tbd
+					end
+					' Ask harley about tf and if this is a constructor
+					node ->o? : tf::StampedTransform(\t_tf_stage,\n\t\t\t\t\tros::Time::now(),\n\t\t\t\t\t_tf_base_frame_name,\n\t\t\t\t\t_tf_stage_frame_name)
+					node <-o? : return tbd
+				end
+				' check if br is ros or not
+				node ->o? : br.sendTransform(tf::StampedTransform(_tf_stage,\n\t\t\t\t\t\t\t\t  ros::Time::now(),\n\t\t\t\t\t\t\t\t  _tf_base_frame_name,\n\t\t\t\t\t\t\t\t  _tf_stage_frame_name))
+			end
+			return
 		deactivate node
 	end
 @enduml
