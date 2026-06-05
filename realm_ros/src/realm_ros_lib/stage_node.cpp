@@ -222,6 +222,9 @@ void StageNode::createStageMosaicing()
 
 void StageNode::createStageTileing()
 {
+  // We don't entirely know why these are all commented out, 
+  // but we are keeping the function despite only having one call
+  // after its only other function call was moved out.
   _stage = std::make_shared<stages::Tileing>(_settings_stage, (*_settings_camera)["fps"].toDouble());
   //_publisher.insert({"output/rgb", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "rgb", 5)});
   //_publisher.insert({"output/elevation", _nh.advertise<sensor_msgs::Image>(_topic_prefix + "elevation", 5)});
