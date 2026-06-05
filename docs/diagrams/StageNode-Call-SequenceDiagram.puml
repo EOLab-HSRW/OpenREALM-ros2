@@ -402,5 +402,9 @@ activate main
 			end
 			return
 		deactivate node
+		main -[#red]>o? : rate.sleep()
 	end
+	main -[#red]>o? : ros::shutdown()
+	main --> alexa : return 0
+deactivate main
 @enduml
